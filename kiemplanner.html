@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiemplanner – planning voor kiemgroenten</title>
+<style>
+  :root {
+    --groen: #2e7d32;
+    --groen-licht: #e8f5e9;
+    --groen-rand: #a5d6a7;
+    --bruin: #6d4c41;
+    --tekst: #263238;
+    --grijs: #78909c;
+    --kaart: #ffffff;
+    --bg: #f4f7f2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--tekst);
+    line-height: 1.5;
+  }
+  header {
+    background: var(--groen);
+    color: #fff;
+    padding: 1.5rem 1rem;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
+  header p { margin: 0; opacity: .9; font-size: .95rem; }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  .instellingen {
+    background: var(--kaart);
+    border: 1px solid var(--groen-rand);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+  }
+  .veld { flex: 1 1 200px; display: flex; flex-direction: column; gap: .25rem; }
+  .veld label { font-weight: 600; font-size: .9rem; }
+  select, input[type="date"] {
+    padding: .55rem .6rem;
+    border: 1px solid var(--groen-rand);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fff;
+    color: var(--tekst);
+  }
+  button {
+    padding: .55rem .9rem;
+    border: 1px solid var(--groen);
+    border-radius: 8px;
+    background: var(--groen);
+    color: #fff;
+    font-size: .95rem;
+    cursor: pointer;
+  }
+  button.secundair { background: #fff; color: var(--groen); }
+  .samenvatting {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 1rem 0;
+  }
+  .chip {
+    background: var(--groen-licht);
+    border: 1px solid var(--groen-rand);
+    border-radius: 999px;
+    padding: .35rem .8rem;
+    font-size: .9rem;
+  }
+  .chip.oogst {
+    background: #fff8e1;
+    border-color: #ffd54f;
+    font-weight: 700;
+  }
+  .voortgang {
+    background: var(--kaart);
+    border: 1px solid var(--groen-rand);
+    border-radius: 12px;
+    padding: .75rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .balk {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--groen-licht);
+    overflow: hidden;
+    margin-top: .4rem;
+  }
+  .balk > div {
+    height: 100%;
+    width: 0;
+    background: var(--groen);
+    transition: width .2s;
+  }
+  .dag {
+    background: var(--kaart);
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: .75rem;
+  }
+  .dag.oogst {
+    border: 2px solid #ffd54f;
+    background: #fffde7;
+  }
+  .dag.vandaag { border-color: var(--groen); }
+  .dagkop {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: .5rem;
+  }
+  .dagkop h2 { margin: 0; font-size: 1.05rem; }
+  .datum { color: var(--grijs); font-size: .9rem; }
+  .taak {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .4rem 0;
+  }
+  .taak input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: .15rem;
+    accent-color: var(--groen);
+    flex-shrink: 0;
+  }
+  .taak.gedaan .label { text-decoration: line-through; color: var(--grijs); }
+  .tijd {
+    display: inline-block;
+    background: var(--groen-licht);
+    border-radius: 6px;
+    padding: 0 .4rem;
+    font-size: .8rem;
+    color: var(--bruin);
+    margin-right: .4rem;
+    white-space: nowrap;
+  }
+  .notitie {
+    margin-top: .5rem;
+    font-size: .88rem;
+    color: var(--bruin);
+    background: #efebe9;
+    border-radius: 8px;
+    padding: .5rem .7rem;
+  }
+  .tips {
+    background: var(--kaart);
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 1.25rem;
+    font-size: .92rem;
+  }
+  .tips h2 { margin-top: 0; font-size: 1.05rem; }
+  .tips ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+  footer {
+    text-align: center;
+    color: var(--grijs);
+    font-size: .85rem;
+    padding: 1.5rem 1rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌱 Kiemplanner</h1>
+  <p>Maak een planning voor het kiemen van kiemgroenten: weken, spoelen en oogsten.</p>
+</header>
+<main>
+  <section class="instellingen">
+    <div class="veld">
+      <label for="zaad">Wat ga je kiemen?</label>
+      <select id="zaad"></select>
+    </div>
+    <div class="veld">
+      <label for="start">Startdatum (dag van het weken)</label>
+      <input type="date" id="start">
+    </div>
+    <button type="button" id="vandaag">Vandaag starten</button>
+  </section>
+
+  <div class="samenvatting" id="samenvatting"></div>
+
+  <div class="voortgang" id="voortgang" hidden>
+    <strong id="voortgang-tekst"></strong>
+    <div class="balk"><div id="voortgang-balk"></div></div>
+  </div>
+
+  <div id="planning"></div>
+
+  <section class="tips">
+    <h2>💡 Tips voor het kiemen</h2>
+    <ul>
+      <li>Gebruik een schone pot met deksel of kiembak; dek af met een doek of deksel met gaatjes.</li>
+      <li>Zet de pot op kamertemperatuur, uit direct zonlicht, met goede luchtcirculatie.</li>
+      <li>Laat de pot na het spoelen schuin uitlekken zodat er geen water blijft staan.</li>
+      <li>Witte "pluisjes" bij radijs- of broccoli-kiemgroenten zijn meestal wortelharen, geen schimmel: spoel ze weg en ze verdwijnen. Echte schimmel ruikt muf en is slijmerig – gooi de kiemen dan weg.</li>
+      <li>Gearriveerde kiemen blijven 3 tot 5 dagen goed in een afgedekte bak in de koelkast.</li>
+      <li>Kook bonenkiemgroenten zoals linzen en kikkererwten voor soep of warme gerechten altijd even mee.</li>
+    </ul>
+  </section>
+</main>
+<footer>Kiemplanner – tijden zijn richtwaarden; kiemsnelheid verschilt per merk, versheid en temperatuur.</footer>
+
+<script>
+const ZADEN = [
+  {
+    id: "linzen",
+    naam: "Linzen (bruin of groen)",
+    emoji: "🫘",
+    wekUur: 10,
+    groeiDagen: 3,
+    spoelingen: 2,
+    notitie: "Voor soep: gekiemde linzen hoef je maar 5 tot 10 minuten mee te koken. Rauw zijn ze ook lekker over een salade.",
+  },
+  {
+    id: "mungbonen",
+    naam: "Mungbonen (taugé)",
+    emoji: "🟢",
+    wekUur: 10,
+    groeiDagen: 4,
+    spoelingen: 2,
+    notitie: "Wil je witte, lange taugé? Houd het donker door een doek over de pot te doen en kiem 1 tot 2 dagen langer.",
+  },
+  {
+    id: "kikkererwten",
+    naam: "Kikkererwten",
+    emoji: "🟡",
+    wekUur: 12,
+    groeiDagen: 2,
+    spoelingen: 2,
+    notitie: "Kook gekiemde kikkererwten altijd kort mee voor hummus of curry; rauw eten wordt afgeraden.",
+  },
+  {
+    id: "broccoli",
+    naam: "Broccoli",
+    emoji: "🥦",
+    wekUur: 6,
+    groeiDagen: 5,
+    spoelingen: 2,
+    notitie: "Fijne kiemen die goed doorlopen: spoel extra grondig zodat ze niet gaan plakken.",
+  },
+  {
+    id: "alfalfa",
+    naam: "Alfalfa",
+    emoji: "🌿",
+    wekUur: 6,
+    groeiDagen: 5,
+    spoelingen: 2,
+    notitie: "Zachte, milde kiemen voor op brood en in salades. Laat ze op de laatste dag in het daglicht groeien voor meer groene blaadjes.",
+  },
+  {
+    id: "radijs",
+    naam: "Radijs / Ramanas",
+    emoji: "🌶️",
+    wekUur: 8,
+    groeiDagen: 4,
+    spoelingen: 2,
+    notitie: "Pittige kiemen. Witte pluisjes in de eerste dagen zijn wortelharen en geen schimmel.",
+  },
+  {
+    id: "zonnebloem",
+    naam: "Zonnebloempitten (gepeld)",
+    emoji: "🌻",
+    wekUur: 4,
+    groeiDagen: 2,
+    spoelingen: 2,
+    notitie: "Snel klaar: gebruik ongebrande, gepelde pitten. Niet geschikt om lang te bewaren, meteen eten.",
+  },
+  {
+    id: "tarwe",
+    naam: "Tarwe of gerst",
+    emoji: "🌾",
+    wekUur: 10,
+    groeiDagen: 2,
+    spoelingen: 2,
+    notitie: "Met een klein staartje van 1 tot 2 mm zijn ze zoet; lekker in salades of meegebakken in brood.",
+  },
+];
+
+const TIJDEN = {
+  2: ["ochtend (± 8:00)", "avond (± 20:00)"],
+  3: ["ochtend (± 8:00)", "middag (± 14:00)", "avond (± 20:00)"],
+};
+
+const select = document.getElementById("zaad");
+const startInput = document.getElementById("start");
+const planningEl = document.getElementById("planning");
+const samenvattingEl = document.getElementById("samenvatting");
+const voortgangEl = document.getElementById("voortgang");
+const voortgangTekst = document.getElementById("voortgang-tekst");
+const voortgangBalk = document.getElementById("voortgang-balk");
+
+ZADEN.forEach((zaad) => {
+  const optie = document.createElement("option");
+  optie.value = zaad.id;
+  optie.textContent = `${zaad.emoji} ${zaad.naam}`;
+  select.appendChild(optie);
+});
+
+function vandaagIso() {
+  const nu = new Date();
+  const lokaal = new Date(nu.getTime() - nu.getTimezoneOffset() * 60000);
+  return lokaal.toISOString().slice(0, 10);
+}
+
+function parseIso(iso) {
+  const [jaar, maand, dag] = iso.split("-").map(Number);
+  return new Date(jaar, maand - 1, dag);
+}
+
+function datumLabel(datum) {
+  return datum.toLocaleDateString("nl-NL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function planKey(zaadId, startIso) {
+  return `kiemplan:${zaadId}:${startIso}`;
+}
+
+function laagGedaan(key) {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function slaGedaanOp(key, gedaan) {
+  localStorage.setItem(key, JSON.stringify([...gedaan]));
+}
+
+function bouwPlan(zaad, start) {
+  const dagen = [];
+
+  dagen.push({
+    datum: new Date(start),
+    oogst: false,
+    taken: [
+      {
+        id: "week-in",
+        tijd: zaad.wekUur <= 4 ? "ochtend" : "ochtend of 's avonds",
+        label: `${zaad.naam} goed wassen en in laten weken (${zaad.wekUur} uur onder koud water, ruime kom of weckpot)`,
+      },
+      {
+        id: "week-uit",
+        tijd: zaad.wekUur <= 4 ? "middag" : "avond",
+        label: "Weekwater afgieten, kiemen grondig afspoelen en pot schuin laten uitlekken",
+      },
+    ],
+  });
+
+  for (let dag = 1; dag < zaad.groeiDagen; dag++) {
+    const datum = new Date(start);
+    datum.setDate(datum.getDate() + dag);
+    const tijden = TIJDEN[zaad.spoelingen] || TIJDEN[2];
+    dagen.push({
+      datum,
+      oogst: false,
+      taken: tijden.map((tijd, i) => ({
+        id: `spoel-${dag}-${i}`,
+        tijd,
+        label: "Afspoelen met koud water, goed uitlekken en pot schuin terugzetten",
+      })),
+    });
+  }
+
+  const oogstDatum = new Date(start);
+  oogstDatum.setDate(oogstDatum.getDate() + zaad.groeiDagen);
+  dagen.push({
+    datum: oogstDatum,
+    oogst: true,
+    taken: [
+      {
+        id: "oogst",
+        tijd: "wanneer je wilt",
+        label: "Oogsten! 🎉 Laatste spoeling, goed laten uitlekken en gebruiken of afgedekt in de koelkast bewaren",
+      },
+    ],
+  });
+
+  return dagen;
+}
+
+function render() {
+  const zaad = ZADEN.find((z) => z.id === select.value);
+  const startIso = startInput.value || vandaagIso();
+  const start = parseIso(startIso);
+  const key = planKey(zaad.id, startIso);
+  const gedaan = laagGedaan(key);
+  const dagen = bouwPlan(zaad, start);
+  const vandaagIso2 = vandaagIso();
+  const vandaag = parseIso(vandaagIso2);
+
+  const oogstDag = dagen[dagen.length - 1].datum;
+  samenvattingEl.innerHTML = "";
+  const chips = [
+    `${zaad.emoji} ${zaad.naam}`,
+    `💧 Weken: ${zaad.wekUur} uur op ${datumLabel(start)}`,
+    `🚿 Spoelen: ${zaad.spoelingen}× per dag`,
+    `🗓️ Oogsten: ${datumLabel(oogstDag)} (dag ${zaad.groeiDagen} na het weken)`,
+  ];
+  chips.forEach((tekst, i) => {
+    const chip = document.createElement("span");
+    chip.className = i === 3 ? "chip oogst" : "chip";
+    chip.textContent = tekst;
+    samenvattingEl.appendChild(chip);
+  });
+
+  planningEl.innerHTML = "";
+  let totaal = 0;
+  let klaar = 0;
+
+  dagen.forEach((dag, index) => {
+    const kaart = document.createElement("section");
+    kaart.className = "dag" + (dag.oogst ? " oogst" : "") + (dag.datum.getTime() === vandaag.getTime() ? " vandaag" : "");
+
+    const kop = document.createElement("div");
+    kop.className = "dagkop";
+    const titel = document.createElement("h2");
+    titel.textContent = dag.oogst ? "🌾 Oogstdag" : index === 0 ? "💧 Weekdag" : `🚿 Kiemdag ${index}`;
+    const datum = document.createElement("span");
+    datum.className = "datum";
+    datum.textContent = datumLabel(dag.datum);
+    kop.append(titel, datum);
+    kaart.appendChild(kop);
+
+    dag.taken.forEach((taak) => {
+      totaal++;
+      const taakId = `${index}-${taak.id}`;
+      if (gedaan.has(taakId)) klaar++;
+
+      const rij = document.createElement("label");
+      rij.className = "taak" + (gedaan.has(taakId) ? " gedaan" : "");
+
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = gedaan.has(taakId);
+      box.addEventListener("change", () => {
+        const huidig = laagGedaan(key);
+        if (box.checked) huidig.add(taakId);
+        else huidig.delete(taakId);
+        slaGedaanOp(key, huidig);
+        render();
+      });
+
+      const tekst = document.createElement("span");
+      tekst.className = "label";
+      const tijd = document.createElement("span");
+      tijd.className = "tijd";
+      tijd.textContent = taak.tijd;
+      tekst.append(tijd, document.createTextNode(taak.label));
+      rij.append(box, tekst);
+      kaart.appendChild(rij);
+    });
+
+    if (dag.oogst && zaad.notitie) {
+      const notitie = document.createElement("div");
+      notitie.className = "notitie";
+      notitie.textContent = zaad.notitie;
+      kaart.appendChild(notitie);
+    }
+
+    planningEl.appendChild(kaart);
+  });
+
+  voortgangEl.hidden = totaal === 0;
+  const procent = totaal ? Math.round((klaar / totaal) * 100) : 0;
+  voortgangTekst.textContent = `Voortgang: ${klaar} van ${totaal} taken afgevinkt (${procent}%)`;
+  voortgangBalk.style.width = procent + "%";
+}
+
+select.addEventListener("change", render);
+startInput.addEventListener("change", render);
+document.getElementById("vandaag").addEventListener("click", () => {
+  startInput.value = vandaagIso();
+  render();
+});
+
+startInput.value = vandaagIso();
+select.value = ZADEN[0].id;
+render();
+</script>
+</body>
+</html>
