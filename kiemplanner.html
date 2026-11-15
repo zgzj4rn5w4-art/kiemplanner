@@ -84,6 +84,10 @@
     border-color: #ffd54f;
     font-weight: 700;
   }
+  .chip.waarschuwing {
+    background: #fff3e0;
+    border-color: #ffb74d;
+  }
   .voortgang {
     background: var(--kaart);
     border: 1px solid var(--groen-rand);
@@ -188,7 +192,14 @@
       <select id="zaad"></select>
     </div>
     <div class="veld">
-      <label for="start">Startdatum (dag van het weken)</label>
+      <label for="modus">Wat wil je plannen?</label>
+      <select id="modus">
+        <option value="start">Ik begin op een datum</option>
+        <option value="oogst">Ik wil oogsten op een datum</option>
+      </select>
+    </div>
+    <div class="veld">
+      <label for="start" id="startLabel">Startdatum (dag van het weken)</label>
       <input type="date" id="start">
     </div>
     <button type="button" id="vandaag">Vandaag starten</button>
@@ -300,6 +311,9 @@ const TIJDEN = {
 
 const select = document.getElementById("zaad");
 const startInput = document.getElementById("start");
+const modusSelect = document.getElementById("modus");
+const startLabel = document.getElementById("startLabel");
+const vandaagKnop = document.getElementById("vandaag");
 const planningEl = document.getElementById("planning");
 const samenvattingEl = document.getElementById("samenvatting");
 const voortgangEl = document.getElementById("voortgang");
@@ -322,6 +336,11 @@ function vandaagIso() {
 function parseIso(iso) {
   const [jaar, maand, dag] = iso.split("-").map(Number);
   return new Date(jaar, maand - 1, dag);
+}
+
+function naarIso(datum) {
+  const lokaal = new Date(datum.getTime() - datum.getTimezoneOffset() * 60000);
+  return lokaal.toISOString().slice(0, 10);
 }
 
 function datumLabel(datum) {
@@ -402,13 +421,22 @@ function bouwPlan(zaad, start) {
 
 function render() {
   const zaad = ZADEN.find((z) => z.id === select.value);
-  const startIso = startInput.value || vandaagIso();
-  const start = parseIso(startIso);
+  const oogstModus = modusSelect.value === "oogst";
+  let startIso = startInput.value || vandaagIso();
+  let start = parseIso(startIso);
+  if (oogstModus) {
+    start = new Date(start);
+    start.setDate(start.getDate() - zaad.groeiDagen);
+    startIso = naarIso(start);
+  }
   const key = planKey(zaad.id, startIso);
   const gedaan = laagGedaan(key);
   const dagen = bouwPlan(zaad, start);
   const vandaagIso2 = vandaagIso();
   const vandaag = parseIso(vandaagIso2);
+
+  startLabel.textContent = oogstModus ? "Gewenste oogstdatum" : "Startdatum (dag van het weken)";
+  vandaagKnop.textContent = oogstModus ? `Oogsten over ${zaad.groeiDagen} dagen` : "Vandaag starten";
 
   const oogstDag = dagen[dagen.length - 1].datum;
   samenvattingEl.innerHTML = "";
@@ -418,9 +446,12 @@ function render() {
     `🚿 Spoelen: ${zaad.spoelingen}× per dag`,
     `🗓️ Oogsten: ${datumLabel(oogstDag)} (dag ${zaad.groeiDagen} na het weken)`,
   ];
+  if (oogstModus && start.getTime() < vandaag.getTime()) {
+    chips.push(`⚠️ Om op ${datumLabel(oogstDag)} te oogsten had je al op ${datumLabel(start)} moeten beginnen — kies een latere oogstdatum of begin vandaag alsnog`);
+  }
   chips.forEach((tekst, i) => {
     const chip = document.createElement("span");
-    chip.className = i === 3 ? "chip oogst" : "chip";
+    chip.className = i === 3 ? "chip oogst" : i === 4 ? "chip waarschuwing" : "chip";
     chip.textContent = tekst;
     samenvattingEl.appendChild(chip);
   });
@@ -490,8 +521,25 @@ function render() {
 
 select.addEventListener("change", render);
 startInput.addEventListener("change", render);
-document.getElementById("vandaag").addEventListener("click", () => {
-  startInput.value = vandaagIso();
+modusSelect.addEventListener("change", () => {
+  const zaad = ZADEN.find((z) => z.id === select.value);
+  if (modusSelect.value === "oogst") {
+    const gekozen = parseIso(startInput.value || vandaagIso());
+    const nodig = new Date();
+    nodig.setDate(nodig.getDate() + zaad.groeiDagen);
+    if (gekozen.getTime() < nodig.getTime()) {
+      startInput.value = naarIso(nodig);
+    }
+  }
+  render();
+});
+vandaagKnop.addEventListener("click", () => {
+  const zaad = ZADEN.find((z) => z.id === select.value);
+  const doel = new Date();
+  if (modusSelect.value === "oogst") {
+    doel.setDate(doel.getDate() + zaad.groeiDagen);
+  }
+  startInput.value = naarIso(doel);
   render();
 });
 
