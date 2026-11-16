@@ -188,7 +188,11 @@
       <select id="zaad"></select>
     </div>
     <div class="veld">
-      <label for="start">Startdatum (dag van het weken)</label>
+      <label for="oogst">🎯 Ik wil oogsten op</label>
+      <input type="date" id="oogst">
+    </div>
+    <div class="veld">
+      <label for="start">💧 Dan begin ik met weken op</label>
       <input type="date" id="start">
     </div>
     <button type="button" id="vandaag">Vandaag starten</button>
@@ -300,6 +304,8 @@ const TIJDEN = {
 
 const select = document.getElementById("zaad");
 const startInput = document.getElementById("start");
+const oogstInput = document.getElementById("oogst");
+const vandaagKnop = document.getElementById("vandaag");
 const planningEl = document.getElementById("planning");
 const samenvattingEl = document.getElementById("samenvatting");
 const voortgangEl = document.getElementById("voortgang");
@@ -324,6 +330,11 @@ function parseIso(iso) {
   return new Date(jaar, maand - 1, dag);
 }
 
+function naarIso(datum) {
+  const lokaal = new Date(datum.getTime() - datum.getTimezoneOffset() * 60000);
+  return lokaal.toISOString().slice(0, 10);
+}
+
 function datumLabel(datum) {
   return datum.toLocaleDateString("nl-NL", {
     weekday: "long",
@@ -334,6 +345,22 @@ function datumLabel(datum) {
 
 function planKey(zaadId, startIso) {
   return `kiemplan:${zaadId}:${startIso}`;
+}
+
+function syncVanStart() {
+  const zaad = ZADEN.find((z) => z.id === select.value);
+  const start = parseIso(startInput.value || vandaagIso());
+  const oogst = new Date(start);
+  oogst.setDate(oogst.getDate() + zaad.groeiDagen);
+  oogstInput.value = naarIso(oogst);
+}
+
+function syncVanOogst() {
+  const zaad = ZADEN.find((z) => z.id === select.value);
+  const oogst = parseIso(oogstInput.value || vandaagIso());
+  const start = new Date(oogst);
+  start.setDate(start.getDate() - zaad.groeiDagen);
+  startInput.value = naarIso(start);
 }
 
 function laagGedaan(key) {
@@ -411,6 +438,7 @@ function render() {
   const vandaag = parseIso(vandaagIso2);
 
   const oogstDag = dagen[dagen.length - 1].datum;
+  oogstInput.value = naarIso(oogstDag);
   samenvattingEl.innerHTML = "";
   const chips = [
     `${zaad.emoji} ${zaad.naam}`,
@@ -488,15 +516,27 @@ function render() {
   voortgangBalk.style.width = procent + "%";
 }
 
-select.addEventListener("change", render);
-startInput.addEventListener("change", render);
-document.getElementById("vandaag").addEventListener("click", () => {
+select.addEventListener("change", () => {
+  syncVanStart();
+  render();
+});
+startInput.addEventListener("change", () => {
+  syncVanStart();
+  render();
+});
+oogstInput.addEventListener("change", () => {
+  syncVanOogst();
+  render();
+});
+vandaagKnop.addEventListener("click", () => {
   startInput.value = vandaagIso();
+  syncVanStart();
   render();
 });
 
 startInput.value = vandaagIso();
 select.value = ZADEN[0].id;
+syncVanStart();
 render();
 </script>
 </body>
